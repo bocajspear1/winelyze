@@ -29,3 +29,7 @@ In the `winelyze` dir, run:
 ```
 python3 run.py --file ../pafish64.exe
 ```
+
+## Credits
+* Got alot of info on WINE in Docker here: https://github.com/scottyhardy/docker-wine
+* WINE debug channels (using for API tracing): https://wiki.winehq.org/Debug_Channels
