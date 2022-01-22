@@ -1,0 +1,8 @@
+*.exe
+winelyze/share/
+*.tar
+*.out
+*.xscr
+venv/
+*.log
+*.png
