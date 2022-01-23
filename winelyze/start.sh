@@ -9,6 +9,9 @@ NAME=${USER}
 unset USER
 SCR=${SCREENSHOT}
 unset SCREENSHOT
+OUT=${LOG}
+unset LOG
+
 
 # Ensure we can resolve ourselves
 HOSTNAME=$(hostname)
@@ -37,4 +40,4 @@ sudo --user ${NAME} /bin/bash -c "cp /tmp/${SAM} /home/${NAME}/.wine/drive_c/use
 chown -R ${NAME}:${NAME} /home/${NAME}
 
 echo "Starting sample"
-sudo --user ${NAME} /bin/bash -c "cd /home/${NAME}/.wine/drive_c/users/${NAME}/; DISPLAY=:0.0 WINEDEBUG='+loaddll,+relay,+pid' wineconsole C:\\\\users\\\\${NAME}\\\\${SAM} 2> /tmp/test.log"
+sudo --user ${NAME} /bin/bash -c "cd /home/${NAME}/.wine/drive_c/users/${NAME}/; DISPLAY=:0.0 WINEDEBUG='+loaddll,+relay,+pid' wineconsole C:\\\\users\\\\${NAME}\\\\${SAM} 2> /tmp/${OUT}"

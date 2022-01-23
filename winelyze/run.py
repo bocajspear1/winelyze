@@ -8,65 +8,6 @@ import time
 import subprocess 
 import tarfile
 
-def condense_calls(raw_file, sample_name):
-    dump_file = open(raw_file, "r")
-    original = dump_file.read()
-    dump_file.close()
-
-    lines = original.split("\n")
-    pid = None
-
-    i = 0 
-    while pid is None and i < len(lines):
-        line = lines[i]
-        if "loaddll:build_module Loaded" in line and sample_name in line:
-            line_split = line.split(":", 2)
-            pid = line_split[0]
-            print(f"Found target pid: {pid} => {int(pid, 16)}")
-        i+=1
-
-    if pid is None:
-        print("Could not determine target pid")
-        return []
-    
-    proc_lines = []
-
-    for line in lines:
-        if line.startswith(f"{pid}:"):
-            proc_lines.append(line)
-
-    calls = []
-    condense_map = {}
-
-    print(f"Condensing {len(proc_lines)} lines...")
-    for line in proc_lines:
-        line_split = line.split(" ", 1)
-        head = line_split[0].lower()
-        back = line_split[1]
-        
-        if ":call" in head:
-            if "ret=" not in back:
-                continue
-            ret_id = int(back.split("ret=")[1], 16)
-            condense_map[ret_id] = back
-        elif ":ret" in head:
-            if "ret=" not in back:
-                continue
-            ret_id = int(line_split[1].split("ret=")[1], 16)
-            if ret_id in condense_map:
-                resplit = line_split[1].split(" ")
-                retval = resplit[-2]
-                # print(retval)
-                calls.append(condense_map[ret_id] + " " + retval)
-                del condense_map[ret_id]
-            else:
-                print("Did not find match!")
-                print(line)
-        elif ":trace:loaddll" in head:
-            print("Loaded dll: " + line_split[1])
-    
-    print(len(calls))
-    return calls
 
 def main():
     parser = argparse.ArgumentParser(description='Process some integers.')
@@ -93,6 +34,7 @@ def main():
     test_name = ''.join(random.choice(string.ascii_lowercase) for i in range(5))
     username = ''.join(random.choice(string.ascii_lowercase) for i in range(5))
     screenshot = ''.join(random.choice(string.ascii_lowercase) for i in range(6))
+    log_file = ''.join(random.choice(string.ascii_lowercase) for i in range(8))
     sample_name =  f"{test_name}.exe"
 
     print(f"Temp Dir: {tmp_dir}")
@@ -115,7 +57,8 @@ def main():
         "TMPDIR": tmp_dir,
         "SAMPLENAME": sample_name,
         "USER": username,
-        "SCREENSHOT": screenshot
+        "SCREENSHOT": screenshot,
+        "LOG": log_file
     }
 
     cont_name = "winelyze-1"
@@ -146,15 +89,21 @@ def main():
     container.stop()
 
     print("Getting test log...")
-    strm, stat = container.get_archive('/tmp/test.log')
-    results = open("config.log.tar", "wb")
+    strm, stat = container.get_archive(f'/tmp/{log_file}')
+    results = open("log.tar", "wb")
     for chunk in strm:
         results.write(chunk)
     results.close()
 
-    results_tar = tarfile.open("config.log.tar", "r")
-    results_tar.extractall(path=share_dir)
+    results_tar = tarfile.open("log.tar", "r")
+    log_file_data = results_tar.extractfile(log_file)
+    log_file_out = open(f"{share_dir}/test.log", "wb")
+    for chunk in log_file_data:
+        log_file_out.write(chunk)
+    log_file_out.close()
     results_tar.close()
+
+    os.remove("log.tar")
 
     print("Getting screenshots...")
     strm, stat = container.get_archive(f'/tmp/{screenshot}')
@@ -167,12 +116,11 @@ def main():
     results_tar.extractall(path=share_dir)
     results_tar.close()
 
-    print("Processing calls...")
-    calls = condense_calls(share_dir + "/test.log", sample_name)
+    screenshot_raws = os.listdir(f"{share_dir}/{screenshot}")
+    for item in screenshot_raws:
+        new_name = item.replace("xscr", "png")
+        subprocess.check_output(["/usr/bin/convert", f"xwd:{share_dir}/{screenshot}/{item}", f"{share_dir}/{screenshot}/{new_name}"])
+        os.remove(f"{share_dir}/{screenshot}/{item}")
 
-    outfile = open(share_dir + "/calls.log", "w")
-    for line in calls:
-        outfile.write(line + "\n")
-    outfile.close()
 
 main()
